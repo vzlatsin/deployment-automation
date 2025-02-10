@@ -1,8 +1,11 @@
 import sys
 import os
+import io
 
 # Ensure `src/` is in the module path so we can import `github_manager.py`
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
+
+import zipfile
 
 import unittest
 from unittest.mock import patch  # Import `patch` to mock API calls
@@ -19,7 +22,8 @@ class TestGitHubRepositoryManager(unittest.TestCase):
     def setUp(self):
         """Initialize logger and repository manager."""
         self.mock_logger = DeploymentLogger()
-        self.manager = GitHubRepositoryManager("test_owner", "test_repo", self.mock_logger)
+        self.manager = GitHubRepositoryManager("test_owner", "test_repo", self.mock_logger, access_token="fake_token")
+
 
     @patch("github_manager.requests.get")  # Mock `requests.get` so no real API call is made
     def test_fetch_latest_commit_success(self, mock_get):
@@ -60,6 +64,50 @@ class TestGitHubRepositoryManager(unittest.TestCase):
 
         # Verify the raised exception contains "Network error"
         self.assertIn("Network error", str(context.exception))
+
+    @patch("github_manager.requests.get")
+    def test_download_repository_success(self, mock_get):
+        """Test successful download and extraction of repository."""
+        # Create a real ZIP file in-memory
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as zip_file:
+            zip_file.writestr("dummy.txt", "This is a test file.")
+
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.content = zip_buffer.getvalue()
+
+        with patch("zipfile.ZipFile.extractall") as mock_extract:
+            self.manager.download_repository("/fake/path")
+            mock_extract.assert_called_once()
+
+
+    @patch("github_manager.requests.get")
+    def test_download_repository_api_failure(self, mock_get):
+        """Test that download_repository() raises an error when GitHub API fails."""
+        mock_get.return_value.status_code = 500
+        mock_get.return_value.text = "Internal Server Error"
+        with self.assertRaises(Exception) as context:
+            self.manager.download_repository("/fake/path")
+        self.assertIn("Failed to download repository", str(context.exception))
+
+    @patch("github_manager.requests.get")
+    def test_download_repository_network_failure(self, mock_get):
+        """Test handling of network failures."""
+        mock_get.side_effect = requests.exceptions.RequestException("Network error")
+        with self.assertRaises(Exception) as context:
+            self.manager.download_repository("/fake/path")
+        self.assertIn("Network error", str(context.exception))
+
+    @patch("github_manager.requests.get")
+    def test_download_repository_invalid_zip(self, mock_get):
+        """Test handling of an invalid ZIP file."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.content = b"Not a valid ZIP file"
+        
+        with patch("zipfile.ZipFile.extractall", side_effect=zipfile.BadZipFile("Invalid ZIP")):
+            with self.assertRaises(Exception) as context:
+                self.manager.download_repository("/fake/path")
+            self.assertIn("Invalid ZIP file received", str(context.exception))
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)  # Run tests with detailed output

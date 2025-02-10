@@ -12,7 +12,7 @@ Each core component will have dedicated unit tests covering:
 ### **Key Areas for Unit Testing:**
 | Component | Test Cases |
 |-----------|-----------|
-| `GitHubRepositoryManager` | ✅ Verify commit fetching, API failure handling. |
+| `GitHubRepositoryManager` | ✅ Verify commit fetching, API failure handling. ✅ Test `download_repository()` for valid and invalid ZIP files. ✅ Handle network failures during download. |
 | `AzureDevOpsManager` | Validate repo syncing, pipeline trigger failures. |
 | `JFrogUploader` | Ensure retry logic works, handle API authentication errors. |
 | `RemoteDeployer` | Simulate SSH failures, invalid command handling. |
@@ -23,15 +23,19 @@ Each core component will have dedicated unit tests covering:
   - `fetch_latest_commit()` retrieves the correct commit hash.
   - Handles **GitHub API failures** (HTTP 500 errors).
   - Handles **Network failures** (timeouts, no internet connection).
-- **Mocking `requests.get`** ensures controlled test behavior.
+  - ✅ `download_repository(target_directory)` handles:
+    - **Successful downloads and extractions.**
+    - **Invalid ZIP file handling.**
+    - **GitHub API failures when downloading.**
+- **Mocking `requests.get` and `zipfile.ZipFile.extractall` ensures controlled test behavior.**
 - **Command to run tests:**
   ```powershell
-  python -m unittest tests/test_github_repository_manager.py
+  python -m unittest discover -s tests
   ```
 
 ## **2. Mocking Strategy**
 To isolate components, **mock external dependencies**:
-- ✅ **GitHub API** (`requests.get` mock for fetching commits).
+- ✅ **GitHub API** (`requests.get` mock for fetching commits and downloading ZIP files).
 - **Azure DevOps API** (mock push and pipeline triggers).
 - **JFrog Artifactory API** (mock `requests.post` for uploads).
 - **SSH Client (`paramiko.SSHClient()`)** (mock SSH connections for deployment testing).
@@ -44,6 +48,7 @@ Integration tests validate interaction between components.
 | Test Case | Components Tested |
 |-----------|------------------|
 | ✅ Fetch latest commit | `GitHubRepositoryManager`, `DeploymentOrchestrator` |
+| ✅ Download repository and verify ZIP extraction | `GitHubRepositoryManager` |
 | End-to-end deployment | `GitHubRepositoryManager`, `AzureDevOpsManager`, `JFrogUploader`, `RemoteDeployer` |
 | Upload retry validation | `JFrogUploader`, `DeploymentLogger` |
 | Deployment SSH error handling | `RemoteDeployer`, `DeploymentLogger` |
@@ -55,6 +60,13 @@ Example of a **successful upload with retry**:
 [DEBUG] Upload failed, retrying...
 [DEBUG] Attempt 2 of 3
 [DEBUG] Upload successful!
+```
+
+Example of a **successful repository download**:
+```powershell
+[INFO] Downloading repository: vzlatsin/deployment-automation from https://api.github.com/repos/vzlatsin/deployment-automation/zipball/main
+[INFO] Extracting repository ZIP file...
+[INFO] Repository extracted to ./downloaded_repo
 ```
 
 Example of an **SSH failure logged**:

@@ -7,6 +7,10 @@
   ```powershell
   python src/main.py --steps fetch --repo-owner vzlatsin --repo-name deployment-automation
   ```
+- ✅ **Implemented `download_repository()` to allow repository downloads.**
+  ```powershell
+  python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --download-repo --target-dir "./downloaded_repo"
+  ```
 
 ## **Phase 2: Azure DevOps Integration** 🔄 In Progress
 ### **Objective:**
@@ -40,6 +44,7 @@
 **Next Steps:**
 - Proceed with `compare_with_azure()` implementation.
 - Finalize API integration for Azure DevOps.
+- **Confirm repository download functionality in different environments.**
 - Update documentation as development progresses.
 
 _Last updated: 2025-02-11_

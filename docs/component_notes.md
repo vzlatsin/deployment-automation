@@ -1,15 +1,16 @@
 # **Component-Level Implementation Notes**
 
 ## **Overview**
-This document provides a breakdown of each major component, its responsibilities, dependencies, and implementation details. **Implementation is now in progress, with `GitHubRepositoryManager` completed. This document will be updated as more components are developed.**
+This document provides a breakdown of each major component, its responsibilities, dependencies, and implementation details. **Implementation is now in progress, with `GitHubRepositoryManager` fully implemented. This document will be updated as more components are developed.**
 
 ---
 
 ## **1. GitHubRepositoryManager**
-### **Status: ✅ Implemented**
+### **Status: ✅ Fully Implemented**
 
 ### **Responsibility:**
 - Fetches the latest source code from GitHub.
+- Downloads the GitHub repository as a ZIP file.
 - Compares changes with Azure DevOps repositories.
 
 ### **Implemented Methods:**
@@ -17,9 +18,10 @@ This document provides a breakdown of each major component, its responsibilities
   - Uses GitHub REST API to fetch the latest commit.
   - Handles API errors and network failures.
   - Integrated into `DeploymentOrchestrator`.
-
-### **Planned Methods:**
-- `compare_with_azure()` - Compares commit hashes between GitHub and Azure DevOps.
+- ✅ `download_repository(target_directory)` - Downloads the GitHub repository as a ZIP file.
+  - Fetches the latest repository snapshot.
+  - Extracts the ZIP archive into a specified directory.
+  - Handles API errors, network failures, and invalid ZIP files.
 
 ### **Dependencies:**
 - ✅ `DeploymentOrchestrator` (fetch step integration)
@@ -27,10 +29,17 @@ This document provides a breakdown of each major component, its responsibilities
 ### **Edge Cases:**
 - GitHub API rate limit.
 - Network connectivity issues.
+- Invalid ZIP file handling.
 
 ### **Command-Line Execution:**
+#### **Fetching Latest Commit**
 ```powershell
 python src/main.py --steps fetch --repo-owner vzlatsin --repo-name deployment-automation
+```
+
+#### **Downloading a Repository from GitHub**
+```powershell
+python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --download-repo --target-dir "./downloaded_repo"
 ```
 
 ---
