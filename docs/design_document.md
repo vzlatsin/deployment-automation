@@ -17,8 +17,9 @@ The deployment system is responsible for:
 - **Comparing changes** between GitHub and Azure DevOps repositories.
 - **Pushing updates** to Azure DevOps repository.
 - **Packaging the application** for deployment.
-- **Uploading the package** to JFrog Artifactory.
+- **Uploading the package** to JFrog Artifactory **with built-in retry logic**.
 - **Deploying the application** to the target production environment (`ldctlm01`).
+- **Logging failures, retries, and successful deployments**.
 
 Each step can be executed independently or as part of a full deployment pipeline.
 
@@ -35,6 +36,26 @@ PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py --steps f
 Executing step: fetch
 Executing step: compare
 Executing step: push
+```
+
+#### **Running Unit Tests**
+To validate functionality, run:
+```powershell
+python -m unittest discover -s tests
+```
+Example output:
+```powershell
+PS C:\Users\Vadim\projects\deployment-automation> python -m unittest tests.test_jfrog_basics
+[DEBUG] Attempt 1 of 3
+[DEBUG] Simulating retry attempt 1
+[DEBUG] Upload failed, retrying...
+[DEBUG] Attempt 2 of 3
+[DEBUG] Simulating retry attempt 2
+[DEBUG] Upload failed, retrying...
+[DEBUG] Attempt 3 of 3
+[DEBUG] Upload Succeeded on Attempt 3
+[DEBUG] Upload successful!
+[DEBUG] Total Upload Attempts: 2
 ```
 
 ## 4. System Architecture (Object Design)
@@ -54,16 +75,17 @@ The system follows **object-oriented design best practices**, ensuring modularit
 | `GitHubRepositoryManager`  | Fetches the latest code from GitHub, compares with Azure DevOps. |
 | `AzureDevOpsManager`       | Pushes updates to Azure DevOps, triggers pipelines (if applicable). |
 | `AppPackager`              | Packages the application for deployment (ZIP/TAR). |
-| `JFrogUploader`            | Uploads the package to JFrog Artifactory. |
-| `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH. |
+| `JFrogUploader`            | Uploads the package to JFrog Artifactory **with retry logic**. |
+| `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH **and logs failures**. |
+| `DeploymentLogger`         | Handles structured logging for all components. |
 
 ### **4.3 Class Interactions**
 1. `DeploymentOrchestrator` **calls** `GitHubRepositoryManager` to fetch code.
 2. `GitHubRepositoryManager` **compares repositories** before pushing to Azure DevOps.
 3. `AzureDevOpsManager` **syncs repositories** and triggers pipelines if necessary.
 4. `AppPackager` **prepares the deployment package**.
-5. `JFrogUploader` **uploads the packaged artifact**.
-6. `RemoteDeployer` **deploys the package** to the production environment.
+5. `JFrogUploader` **uploads the packaged artifact with automatic retry**.
+6. `RemoteDeployer` **deploys the package** to the production environment **and logs SSH failures**.
 
 ## **Appendix A: System Dependencies**
 - **GitHub API**: Used to fetch the latest commit hash.
@@ -97,3 +119,4 @@ Each test failure will guide refinements in system design:
 | Constructor signature mismatch | Ensures **all required dependencies are present** and correctly injected. |
 
 By following this methodology, we ensure that **our system evolves in a testable, maintainable, and modular way while catching errors early in the design phase**.
+
