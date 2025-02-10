@@ -21,6 +21,23 @@ The deployment system is responsible for:
 
 Each step can be executed independently or as part of a full deployment pipeline.
 
+### **3.1 Command-Line Execution Examples**
+The following commands demonstrate how to execute various deployment steps manually:
+
+#### **Running `main.py` with No Arguments (Displays Available Steps)**
+```powershell
+PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py
+No steps specified. Available steps: fetch, compare, push, package, upload, deploy
+```
+
+#### **Executing Specific Deployment Steps**
+```powershell
+PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py --steps fetch compare push
+Executing step: fetch
+Executing step: compare
+Executing step: push
+```
+
 ## 4. System Architecture (Object Design)
 The system follows **object-oriented design best practices**, ensuring modularity, extensibility, and testability.
 
@@ -32,16 +49,29 @@ The system follows **object-oriented design best practices**, ensuring modularit
 - **Open-Closed Principle**: The system **can be extended without modifying existing classes**.
 
 ### **4.2 Class Overview**
-| **Class Name**          | **Responsibility** |
-|------------------------|-------------------|
-| `DeploymentOrchestrator` | Manages overall deployment workflow, calling individual steps. |
-| `GitHubRepositoryManager` | Fetches latest code from GitHub, compares with Azure DevOps. |
-| `AzureDevOpsManager`   | Pushes updates to Azure DevOps, triggers pipelines (if applicable). |
-| `AppPackager`          | Packages the application for deployment (ZIP/TAR). |
-| `JFrogUploader`        | Uploads the package to JFrog Artifactory. |
-| `RemoteDeployer`       | Deploys the application to `ldctlm01` via SSH. |
+| **Class Name**              | **Responsibility** |
+|----------------------------|-------------------|
+| `DeploymentOrchestrator`   | Manages overall deployment workflow, calling individual steps. |
+| `GitHubRepositoryManager`  | Fetches the latest code from GitHub, compares with Azure DevOps. |
+| `AzureDevOpsManager`       | Pushes updates to Azure DevOps, triggers pipelines (if applicable). |
+| `AppPackager`              | Packages the application for deployment (ZIP/TAR). |
+| `JFrogUploader`            | Uploads the package to JFrog Artifactory. |
+| `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH. |
 
-### **4.3 Class Interactions**
+### **4.3 GitHubRepositoryManager - Expected Behavior**
+- Retrieves the **latest commit hash** from a specified GitHub repository.
+- Inputs:
+  - Repository Owner (organization or user name)
+  - Repository Name
+  - (Optional) GitHub Token for authentication
+- Outputs:
+  - Latest commit hash
+- Error Handling:
+  - If GitHub API fails, it should **log the error and retry** (configurable retries).
+  - If the repository does not exist, raise a `ValueError`.
+  - If authentication fails, return a meaningful error message.
+
+### **4.4 Class Interactions**
 1. `DeploymentOrchestrator` **calls** `GitHubRepositoryManager` to fetch code.
 2. `GitHubRepositoryManager` **compares repositories** before pushing to Azure DevOps.
 3. `AzureDevOpsManager` **syncs repositories** and triggers pipelines if necessary.
@@ -49,9 +79,11 @@ The system follows **object-oriented design best practices**, ensuring modularit
 5. `JFrogUploader` **uploads the packaged artifact**.
 6. `RemoteDeployer` **deploys the package** to the production environment.
 
-## **Appendix A: Execution Flexibility & Modular Design**
-- The deployment system is designed to be **flexible**, allowing individual steps to be executed separately.
-- The system supports **manual execution** via command-line arguments and **automated execution** via Azure DevOps pipelines.
+## **Appendix A: System Dependencies**
+- **GitHub API**: Used to fetch the latest commit hash.
+- **Azure DevOps API**: Used to push changes and trigger pipelines.
+- **JFrog Artifactory**: Stores packaged deployment artifacts.
+- **SSH (ldctlm01)**: Used for remote deployment to production.
 
 ## **Appendix B: How TDD Will Shape the System Design**
 ### **B.1 Overview**
