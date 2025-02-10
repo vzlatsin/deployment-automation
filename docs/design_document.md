@@ -14,6 +14,7 @@ This document outlines the design for the **Deployment Automation System**, whic
 ## 3. Deployment Workflow
 The deployment system is responsible for:
 - **Fetching the latest source code** from GitHub.
+- **Downloading the GitHub repository** as a ZIP file.
 - **Comparing changes** between GitHub and Azure DevOps repositories.
 - **Pushing updates** to Azure DevOps repository.
 - **Packaging the application** for deployment.
@@ -27,7 +28,16 @@ Each step can be executed independently or as part of a full deployment pipeline
 #### **Running `main.py` with No Arguments (Displays Available Steps)**
 ```powershell
 PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py
-No steps specified. Available steps: fetch, compare, push, package, upload, deploy
+No steps specified. Available steps: fetch, download-repo, compare, push, package, upload, deploy
+```
+
+#### **Downloading a Repository from GitHub**
+```powershell
+PS C:\Users\Vadim\projects\deployment-automation> python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --download-repo --target-dir "./downloaded_repo"
+Downloading repository: vzlatsin/deployment-automation from https://api.github.com/repos/vzlatsin/deployment-automation/zipball/main
+Extracting repository ZIP file...
+Repository extracted to ./downloaded_repo
+Repository deployment-automation downloaded successfully to ./downloaded_repo
 ```
 
 #### **Executing Specific Deployment Steps**
@@ -72,7 +82,7 @@ The system follows **object-oriented design best practices**, ensuring modularit
 | **Class Name**              | **Responsibility** |
 |----------------------------|-------------------|
 | `DeploymentOrchestrator`   | Manages overall deployment workflow, calling individual steps. |
-| `GitHubRepositoryManager`  | Fetches the latest code from GitHub, compares with Azure DevOps. |
+| `GitHubRepositoryManager`  | Fetches the latest code from GitHub, downloads the repository as a ZIP file, compares with Azure DevOps. |
 | `AzureDevOpsManager`       | Pushes updates to Azure DevOps, triggers pipelines (if applicable). |
 | `AppPackager`              | Packages the application for deployment (ZIP/TAR). |
 | `JFrogUploader`            | Uploads the package to JFrog Artifactory **with retry logic**. |
@@ -81,14 +91,14 @@ The system follows **object-oriented design best practices**, ensuring modularit
 
 ### **4.3 Class Interactions**
 1. `DeploymentOrchestrator` **calls** `GitHubRepositoryManager` to fetch code.
-2. `GitHubRepositoryManager` **compares repositories** before pushing to Azure DevOps.
+2. `GitHubRepositoryManager` **downloads and compares repositories** before pushing to Azure DevOps.
 3. `AzureDevOpsManager` **syncs repositories** and triggers pipelines if necessary.
 4. `AppPackager` **prepares the deployment package**.
 5. `JFrogUploader` **uploads the packaged artifact with automatic retry**.
 6. `RemoteDeployer` **deploys the package** to the production environment **and logs SSH failures**.
 
 ## **Appendix A: System Dependencies**
-- **GitHub API**: Used to fetch the latest commit hash.
+- **GitHub API**: Used to fetch the latest commit hash and download repositories.
 - **Azure DevOps API**: Used to push changes and trigger pipelines.
 - **JFrog Artifactory**: Stores packaged deployment artifacts.
 - **SSH (ldctlm01)**: Used for remote deployment to production.
@@ -119,4 +129,3 @@ Each test failure will guide refinements in system design:
 | Constructor signature mismatch | Ensures **all required dependencies are present** and correctly injected. |
 
 By following this methodology, we ensure that **our system evolves in a testable, maintainable, and modular way while catching errors early in the design phase**.
-
