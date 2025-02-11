@@ -9,6 +9,9 @@ from unittest.mock import MagicMock, patch
 import inspect
 import logging
 
+logging.getLogger("GitHubRepositoryManager").setLevel(logging.ERROR)
+logging.getLogger("AzureDevOpsManager").setLevel(logging.ERROR)
+
 # Import the classes under test
 try:
     from github_manager import GitHubRepositoryManager
@@ -53,26 +56,29 @@ class TestDeploymentSystem(unittest.TestCase):
     def test_constructor_signatures(self):
         """Ensure all classes have correct constructor parameters"""
         expected_signatures = {
-            "GitHubRepositoryManager": {"repo_owner", "repo_name", "logger"},
+            "GitHubRepositoryManager": {"repo_owner", "repo_name", "logger", "access_token"},  # ✅ Added access_token
             "AzureDevOpsManager": {"repo_url", "logger"},
-            "DeploymentOrchestrator": {"logger"},
+            "DeploymentOrchestrator": {"logger", "github_manager"},
             "AppPackager": {"source_dir", "output_dir", "logger"},
             "JFrogUploader": {"repo_url", "logger"},
             "RemoteDeployer": {"server_address", "ssh_user", "logger"},
         }
-        
+
         for class_name, expected_params in expected_signatures.items():
             actual_params = set(inspect.signature(eval(class_name).__init__).parameters.keys()) - {"self"}
             self.assertEqual(actual_params, expected_params, 
                 f"Constructor mismatch in {class_name}. Expected: {expected_params}, Found: {actual_params}")
+
     
     def test_dependency_injection(self):
         """Ensure all dependencies can be injected without errors"""
         try:
             mock_logger = MagicMock()
+            mock_github_manager = MagicMock()
+
             github_manager = GitHubRepositoryManager(repo_owner="org", repo_name="deployment-automation", logger=mock_logger)
             azure_manager = AzureDevOpsManager(repo_url="https://dev.azure.com/org/repo", logger=mock_logger)
-            orchestrator = DeploymentOrchestrator(logger=mock_logger)
+            orchestrator = DeploymentOrchestrator(logger=mock_logger, github_manager=mock_github_manager)
             packager = AppPackager(source_dir="/app", output_dir="/deploy", logger=mock_logger)
             uploader = JFrogUploader(repo_url="https://jfrog.example.com/repo", logger=mock_logger)
             deployer = RemoteDeployer(server_address="ldctlm01", ssh_user="deploy_user", logger=mock_logger)
@@ -113,9 +119,9 @@ class TestDeploymentSystem(unittest.TestCase):
         except Exception:
             result = None
 
-        print("[DEBUG] Deploy Result:", result)
-        print("[DEBUG] Logger Calls:", self.mock_logger.method_calls)
-        print("[DEBUG] Logger Error Calls:", self.mock_logger.error.call_args_list)
+        #print("[DEBUG] Deploy Result:", result)
+        #print("[DEBUG] Logger Calls:", self.mock_logger.method_calls)
+        #print("[DEBUG] Logger Error Calls:", self.mock_logger.error.call_args_list)
 
         # ✅ Ensure logging actually happened
         self.mock_logger.error.assert_called_with("SSH Connection Failed")
@@ -128,9 +134,9 @@ class TestDeploymentSystem(unittest.TestCase):
         def side_effect(*args, **kwargs):
             if retry_counter["count"] < 2:  # Fail first 2 times
                 retry_counter["count"] += 1
-                print(f"[DEBUG] Simulating retry attempt {retry_counter['count']}")
+                # print(f"[DEBUG] Simulating retry attempt {retry_counter['count']}")
                 return False  # Simulate failure
-            print("[DEBUG] Upload Succeeded on Attempt", retry_counter["count"] + 1)
+            # print("[DEBUG] Upload Succeeded on Attempt", retry_counter["count"] + 1)
             return True  # ✅ Succeed on 3rd attempt
 
         uploader = JFrogUploader(repo_url="https://jfrog.example.com/repo", logger=self.mock_logger)
@@ -140,60 +146,57 @@ class TestDeploymentSystem(unittest.TestCase):
 
         result = uploader.upload_package("/deploy/app.zip", retry_count=3)
 
-        print("[DEBUG] Total Upload Attempts:", retry_counter["count"])  # 🔍 Debugging retry count
+        # print("[DEBUG] Total Upload Attempts:", retry_counter["count"])  # 🔍 Debugging retry count
 
         # ✅ Ensure the upload succeeds after retries
         self.assertTrue(result, "[ERROR] Upload did not succeed after retries.")  
         self.assertEqual(retry_counter["count"], 2, f"[ERROR] Expected 2 retries, got {retry_counter['count']}.")
 
 
-
-
-
-
-
     def test_deploy_logs_error_on_failure(self):
         """Ensures deployment logs error on failure."""
         
-        print("[DEBUG] Injected Logger:", self.mock_logger)
+        # print("[DEBUG] Injected Logger:", self.mock_logger)
 
         deployer = RemoteDeployer(server_address="ldctlm01", ssh_user="deploy_user", logger=self.mock_logger)
 
-        print("[DEBUG] Is deployer.logger the same as mock_logger?", deployer.logger is self.mock_logger)
+        # print("[DEBUG] Is deployer.logger the same as mock_logger?", deployer.logger is self.mock_logger)
 
         try:
             deployer.deploy_to_server("/deploy/app.zip")  # ✅ Runs the real method
         except Exception:
-            print("[DEBUG] Exception Raised in Test!")  # ✅ Confirms exception is caught
+            # print("[DEBUG] Exception Raised in Test!")  # ✅ Confirms exception is caught
             pass  # ✅ Ignore exception, test only logging
 
-        print("[DEBUG] Logger Calls:", self.mock_logger.method_calls)
-        print("[DEBUG] Logger Error Calls:", self.mock_logger.error.call_args_list)
+        # print("[DEBUG] Logger Calls:", self.mock_logger.method_calls)
+        # print("[DEBUG] Logger Error Calls:", self.mock_logger.error.call_args_list)
 
         # ✅ Ensure logging actually happened
         self.mock_logger.error.assert_called_with("SSH Connection Failed")
 
+    def test_compare_with_azure_stub(self):
+        """
+        Ensures compare_with_azure() correctly logs comparison attempts.
+        """
+        azure_manager = AzureDevOpsManager(repo_url="https://dev.azure.com/org/repo", logger=self.mock_logger)
+        
+        github_commit = "123456"
+        result = azure_manager.compare_with_azure(github_commit)
+
+        self.assertFalse(result)  # Stub always returns False
+
+        # Ensure both log messages are captured
+        expected_logs = [
+            f"[AzureDevOpsManager] Comparing Azure DevOps repo 'https://dev.azure.com/org/repo' with GitHub commit {github_commit}",
+            "[AzureDevOpsManager] Azure DevOps repository is outdated."
+        ]
+        
+        log_messages = [call[0][0] for call in self.mock_logger.log_info.call_args_list]
+
+        for expected in expected_logs:
+            self.assertIn(expected, log_messages, f"Expected log not found: {expected}")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
+   
 if __name__ == "__main__":
     unittest.main(verbosity=2)
