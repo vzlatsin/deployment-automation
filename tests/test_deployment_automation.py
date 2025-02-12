@@ -57,7 +57,7 @@ class TestDeploymentSystem(unittest.TestCase):
         """Ensure all classes have correct constructor parameters"""
         expected_signatures = {
             "GitHubRepositoryManager": {"repo_owner", "repo_name", "logger", "access_token"},  # ✅ Added access_token
-            "AzureDevOpsManager": {"repo_url", "logger"},
+            "AzureDevOpsManager": {"repo_url", "organization", "project", "repo_name", "access_token", "logger"},
             "DeploymentOrchestrator": {"logger", "github_manager"},
             "AppPackager": {"source_dir", "output_dir", "logger"},
             "JFrogUploader": {"repo_url", "logger"},
@@ -77,7 +77,15 @@ class TestDeploymentSystem(unittest.TestCase):
             mock_github_manager = MagicMock()
 
             github_manager = GitHubRepositoryManager(repo_owner="org", repo_name="deployment-automation", logger=mock_logger)
-            azure_manager = AzureDevOpsManager(repo_url="https://dev.azure.com/org/repo", logger=mock_logger)
+            azure_manager = AzureDevOpsManager(
+                repo_url="https://dev.azure.com/org/repo",
+                organization="test-org",
+                project="test-project",
+                repo_name="test-repo",
+                access_token="fake-token",
+                logger=self.mock_logger
+            )
+
             orchestrator = DeploymentOrchestrator(logger=mock_logger, github_manager=mock_github_manager)
             packager = AppPackager(source_dir="/app", output_dir="/deploy", logger=mock_logger)
             uploader = JFrogUploader(repo_url="https://jfrog.example.com/repo", logger=mock_logger)
@@ -178,7 +186,15 @@ class TestDeploymentSystem(unittest.TestCase):
         """
         Ensures compare_with_azure() correctly logs comparison attempts.
         """
-        azure_manager = AzureDevOpsManager(repo_url="https://dev.azure.com/org/repo", logger=self.mock_logger)
+        azure_manager = AzureDevOpsManager(
+            repo_url="https://dev.azure.com/org/repo",
+            organization="test-org",
+            project="test-project",
+            repo_name="test-repo",
+            access_token="fake-token",
+            logger=self.mock_logger
+        )
+
         
         github_commit = "123456"
         result = azure_manager.compare_with_azure(github_commit)
@@ -188,7 +204,7 @@ class TestDeploymentSystem(unittest.TestCase):
         # Ensure both log messages are captured
         expected_logs = [
             f"[AzureDevOpsManager] Comparing Azure DevOps repo 'https://dev.azure.com/org/repo' with GitHub commit {github_commit}",
-            "[AzureDevOpsManager] Azure DevOps repository is outdated."
+            f"[AzureDevOpsManager] Fetching latest commit for repo test-repo"
         ]
         
         log_messages = [call[0][0] for call in self.mock_logger.log_info.call_args_list]
