@@ -1,0 +1,11 @@
+{
+    "AZURE_DEVOPS_PAT": "BmtMjobafKMmQs3f0UXqmvlmzOoVfi4ZKChQC7NR06Pb0PNzwZrpJQQJ99BBACAAAAAJQbk0AAASAZDOpSg9",
+    "AZURE_ORGANIZATION": "colesgroup",
+    "AZURE_PROJECT": "ControlM",
+    "AZURE_REPO": "deployment-automation",
+    "AZURE_API_VERSION": "6.0",
+    "AZURE_BASE_URL": "https://dev.azure.com/colesgroup",
+    "GITHUB_OWNER": "vzlatsin",
+    "GITHUB_REPO": "deployment-automation",
+    "DEFAULT_BRANCH": "main"
+}

@@ -50,6 +50,7 @@ Integration tests validate interaction between components.
 | ✅ Fetch latest commit | `GitHubRepositoryManager`, `DeploymentOrchestrator` |
 | ✅ Download repository and verify ZIP extraction | `GitHubRepositoryManager` |
 | ✅ Fetch Azure DevOps Repositories | `AzureDevOpsManager` (using live API calls) |
+| ✅ Fetch latest commit from Azure DevOps | AzureDevOpsManager.get_latest_commit() |
 | ✅ Compare local repo with Azure DevOps | `AzureDevOpsManager.compare_with_azure()` |
 | End-to-end deployment | `GitHubRepositoryManager`, `AzureDevOpsManager`, `JFrogUploader`, `RemoteDeployer` |
 | Upload retry validation | `JFrogUploader`, `DeploymentLogger` |
@@ -86,7 +87,6 @@ Tests will be **automatically executed** in Azure DevOps pipelines:
 ---
 **Next Steps:**
 - Expand unit tests for `AzureDevOpsManager.compare_with_azure()`.
-- Implement **full integration tests for commit comparison**.
 - Monitor CI/CD test results.
 
 _Last updated: 2025-02-12_

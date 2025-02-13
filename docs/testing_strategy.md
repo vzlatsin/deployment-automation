@@ -45,13 +45,15 @@ To isolate components, **mock external dependencies**:
 Integration tests validate interaction between components.
 
 ### **Integration Test Cases:**
-| Test Case | Components Tested |
-|-----------|------------------|
-| ✅ Fetch latest commit | `GitHubRepositoryManager`, `DeploymentOrchestrator` |
+| Test Case                          | Components Tested                          |
+|------------------------------------|-------------------------------------------|
+| ✅ Fetch latest commit (GitHub)   | `GitHubRepositoryManager`, `DeploymentOrchestrator` |
+| ✅ Fetch latest commit (Azure DevOps) | `AzureDevOpsManager` |
 | ✅ Download repository and verify ZIP extraction | `GitHubRepositoryManager` |
-| End-to-end deployment | `GitHubRepositoryManager`, `AzureDevOpsManager`, `JFrogUploader`, `RemoteDeployer` |
-| Upload retry validation | `JFrogUploader`, `DeploymentLogger` |
-| Deployment SSH error handling | `RemoteDeployer`, `DeploymentLogger` |
+| End-to-end deployment              | `GitHubRepositoryManager`, `AzureDevOpsManager`, `JFrogUploader`, `RemoteDeployer` |
+| Upload retry validation            | `JFrogUploader`, `DeploymentLogger` |
+| Deployment SSH error handling      | `RemoteDeployer`, `DeploymentLogger` |
+
 
 ## **4. Expected Debug Output Samples**
 Example of a **successful upload with retry**:
@@ -79,12 +81,15 @@ Example of an **SSH failure logged**:
 Tests will be **automatically executed** in Azure DevOps pipelines:
 - ✅ **Run unit tests on PR merges.**
 - ✅ **Run integration tests before deployment.**
+- ✅ **Validate `get_latest_commit()` for both GitHub and Azure DevOps.**
 - ✅ **Abort deployment if tests fail.**
+
 
 ---
 **Next Steps:**
 - Expand unit tests for `AzureDevOpsManager.compare_with_azure()`.
-- Implement **full integration tests for commit comparison**.
+- ✅ Implement integration tests for `AzureDevOpsManager.get_latest_commit()`.
 - Monitor CI/CD test results.
+
 
 _Last updated: 2025-02-11_

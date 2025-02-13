@@ -44,16 +44,23 @@ python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --dow
 
 ---
 
-## **2. AzureDevOpsManager**
-### **Status: Planned**
+### AzureDevOpsManager
+- **Status**: In Progress (Implemented `get_latest_commit()`, authentication, and repository retrieval)
+
 
 ### **Responsibility:**
 - Pushes updates from GitHub to Azure DevOps.
 - Triggers CI/CD pipelines if necessary.
 
 ### **Key Methods (Planned):**
-- `push_to_azure()` - Pushes the latest code to Azure DevOps.
-- `trigger_pipeline()` - Triggers an Azure pipeline for automated deployment.
+
+#### Key Methods (Implemented / Planned)
+- `authenticate()`: ✅ Implemented – Authenticates with Azure DevOps API.
+- `fetch_repositories()`: ✅ Implemented – Retrieves all repositories from Azure DevOps.
+- `get_latest_commit()`: ✅ Implemented – Fetches the latest commit from a specified repository.
+- `compare_with_github()`: ⚠️ Planned – Compare commits between Azure DevOps and GitHub.
+- `trigger_pipeline()`: ⚠️ Planned – Start an Azure DevOps pipeline.
+
 
 ### **Dependencies:**
 - `GitHubRepositoryManager`
@@ -121,10 +128,11 @@ python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --dow
 
 ---
 
-## **Next Steps**
-- Implement `compare_with_azure()` in `GitHubRepositoryManager`.
-- Begin `AzureDevOpsManager` implementation.
-- Update this document as more components are developed.
+### Next Steps
+- Implement `compare_with_github()`.
+- Extend test coverage for `AzureDevOpsManager`.
+- Add error handling and retry logic for API calls.
+
 
 ---
 

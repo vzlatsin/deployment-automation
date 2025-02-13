@@ -13,7 +13,7 @@ This document outlines the design for the **Deployment Automation System**, whic
 
 ## 3. Deployment Workflow
 The deployment system is responsible for:
-- **Fetching the latest source code** from GitHub.
+- **Fetching the latest source code from GitHub **or the latest commit from Azure DevOps**.
 - **Downloading the GitHub repository** as a ZIP file.
 - **Comparing changes** between GitHub and Azure DevOps repositories.
 - **Pushing updates** to Azure DevOps repository.
@@ -68,6 +68,13 @@ PS C:\Users\Vadim\projects\deployment-automation> python -m unittest tests.test_
 [DEBUG] Total Upload Attempts: 2
 ```
 
+#### Fetching Latest Commit from Azure DevOps
+```powershell
+PS C:\Users\Vadim\projects\deployment-automation> python src/main.py --fetch-latest-commit
+Fetching latest commit for repo: deployment-automation
+Latest commit SHA: e7d0c85bffedfba35c4456609b16dc156e99c2d7
+
+
 ## 4. System Architecture (Object Design)
 The system follows **object-oriented design best practices**, ensuring modularity, extensibility, and testability.
 
@@ -83,7 +90,7 @@ The system follows **object-oriented design best practices**, ensuring modularit
 |----------------------------|-------------------|
 | `DeploymentOrchestrator`   | Manages overall deployment workflow, calling individual steps. |
 | `GitHubRepositoryManager`  | Fetches the latest code from GitHub, downloads the repository as a ZIP file, compares with Azure DevOps. |
-| `AzureDevOpsManager`       | Pushes updates to Azure DevOps, triggers pipelines (if applicable). |
+| `AzureDevOpsManager`       | Fetches the latest commit from Azure DevOps, compares with GitHub, pushes updates to Azure DevOps, and triggers pipelines (if applicable). |
 | `AppPackager`              | Packages the application for deployment (ZIP/TAR). |
 | `JFrogUploader`            | Uploads the package to JFrog Artifactory **with retry logic**. |
 | `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH **and logs failures**. |

@@ -9,6 +9,9 @@ from unittest.mock import MagicMock, patch
 import inspect
 import logging
 
+import requests
+
+
 logging.getLogger("GitHubRepositoryManager").setLevel(logging.ERROR)
 logging.getLogger("AzureDevOpsManager").setLevel(logging.ERROR)
 
@@ -52,6 +55,14 @@ class TestDeploymentSystem(unittest.TestCase):
 
         """Ensure logger is initialized for all tests"""
         self.mock_logger = MagicMock()  # ✅ Always use the same mock logger
+        self.manager = AzureDevOpsManager(
+            repo_url="https://dev.azure.com/test-org/test-repo",
+            organization="test-org",
+            project="test-project",
+            repo_name="test-repo",
+            access_token="fake-token",
+            logger=self.mock_logger
+        )
     
     def test_constructor_signatures(self):
         """Ensure all classes have correct constructor parameters"""
@@ -211,6 +222,108 @@ class TestDeploymentSystem(unittest.TestCase):
 
         for expected in expected_logs:
             self.assertIn(expected, log_messages, f"Expected log not found: {expected}")
+
+    @patch("azure_manager.requests.get")
+    def test_compare_with_azure_repos_in_sync(self, mock_get):
+        """Test case where Azure and GitHub repositories are in sync."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"value": [{"commitId": "123456"}]}
+
+        result = self.manager.compare_with_azure("123456")
+        self.assertTrue(result)
+        self.mock_logger.log_info.assert_called_with(
+            "[AzureDevOpsManager] Azure DevOps and GitHub are in sync."
+        )
+
+    @patch("azure_manager.requests.get")
+    def test_compare_with_azure_repos_out_of_sync(self, mock_get):
+        """Test case where Azure is behind GitHub."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"value": [{"commitId": "old_commit"}]}
+
+        result = self.manager.compare_with_azure("new_commit")
+        self.assertFalse(result)
+        self.mock_logger.log_info.assert_called_with(
+            "[AzureDevOpsManager] Azure DevOps repository is outdated."
+        )
+
+    @patch("azure_manager.requests.get")
+    def test_compare_with_azure_api_failure(self, mock_get):
+        """Test case where Azure DevOps API returns an error."""
+        mock_get.return_value.status_code = 500
+        mock_get.return_value.text = "Internal Server Error"
+
+        result = self.manager.compare_with_azure("123456")
+        self.assertFalse(result)  # ✅ Function should return False
+
+        # 🐛 Debugging step: Print captured logs
+        print("Captured Logs:", self.mock_logger.method_calls)
+
+        # ✅ Extract logged error messages
+        logged_errors = [call[0][0] for call in self.mock_logger.log_error.call_args_list]
+
+        # ✅ Check if either expected log message exists
+        self.assertTrue(
+            any(
+                msg in logged_errors
+                for msg in [
+                    "[AzureDevOpsManager] Azure API request failed: 500 - Internal Server Error",
+                    "[AzureDevOpsManager] Azure API request failed or returned no commits."
+                ]
+            ),
+            f"Expected one of the expected error messages, but got: {logged_errors}"
+        )
+
+
+
+
+    @patch("azure_manager.requests.get")
+    def test_compare_with_azure_no_commits(self, mock_get):
+        """Test case where Azure DevOps repository has no commits."""
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {"value": []}  # No commits found
+
+        result = self.manager.compare_with_azure("123456")
+        self.assertFalse(result)
+        self.mock_logger.log_warning.assert_called_with(
+            "[AzureDevOpsManager] No commits found in Azure DevOps repository."
+        )
+
+
+    def test_compare_with_azure_network_failure(self):
+        """Test network failure without using @patch."""
+        print("Running network failure test...")
+
+        # Backup original requests.get
+        original_get = requests.get
+
+        try:
+            # Override requests.get to simulate a network error
+            def fake_requests_get(*args, **kwargs):
+                raise requests.exceptions.RequestException("Network Error")
+
+            requests.get = fake_requests_get
+
+            # Run test
+            result = self.manager.compare_with_azure("123456")
+
+            print(f"Result: {result}")
+
+            # Print logged messages for debugging
+            print("Captured log messages:")
+            for log_call in self.mock_logger.log_error.call_args_list:
+                print(log_call)
+
+        finally:
+            # Restore original requests.get after test
+            requests.get = original_get
+
+        # Validate logger captured the correct error message
+        self.mock_logger.log_error.assert_called_with(
+            "[AzureDevOpsManager] Network error while connecting to Azure: Network Error"
+        )
+
+
 
 
    
