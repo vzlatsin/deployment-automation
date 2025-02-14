@@ -1,0 +1,8 @@
+{
+    "fetch": "FetchCodeStep",
+    "compare": "CompareVersionsStep",
+    "package": "PackageAppStep",
+    "upload": "UploadToJfrogStep",
+    "deploy": "DeployToTargetStep",
+    "cleanup": "CleanupStep"
+}

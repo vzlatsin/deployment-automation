@@ -1,92 +1,107 @@
-# **Testing Strategy Document**
+# **Implementation Roadmap**
 
 ## **Overview**
-This document defines the testing strategy for ensuring the reliability and correctness of the deployment automation system.
-
-## **1. Unit Testing Strategy**
-Each core component will have dedicated unit tests covering:
-- **Success cases** (expected behavior).
-- **Failure handling** (e.g., network failures, authentication errors).
-- **Edge cases** (unexpected inputs, timeouts, etc.).
-
-### **Key Areas for Unit Testing:**
-| Component | Test Cases |
-|-----------|-----------|
-| `GitHubRepositoryManager` | ✅ Verify commit fetching, API failure handling. ✅ Test `download_repository()` for valid and invalid ZIP files. ✅ Handle network failures during download. |
-| `AzureDevOpsManager` | Validate repo syncing, pipeline trigger failures. ✅ Now tested via `test_azure_devops_integration.py`. |
-| `JFrogUploader` | Ensure retry logic works, handle API authentication errors. |
-| `RemoteDeployer` | Simulate SSH failures, invalid command handling. |
-| `DeploymentLogger` | Ensure correct logging, handle missing log files. |
-
-### **Updated Tests for `GitHubRepositoryManager`** ✅ Implemented
-- **Unit tests verify:**
-  - `fetch_latest_commit()` retrieves the correct commit hash.
-  - Handles **GitHub API failures** (HTTP 500 errors).
-  - Handles **Network failures** (timeouts, no internet connection).
-  - ✅ `download_repository(target_directory)` handles:
-    - **Successful downloads and extractions.**
-    - **Invalid ZIP file handling.**
-    - **GitHub API failures when downloading.**
-- **Mocking `requests.get` and `zipfile.ZipFile.extractall` ensures controlled test behavior.**
-- **Command to run tests:**
-  ```powershell
-  python -m unittest discover -s tests
-  ```
-
-## **2. Mocking Strategy**
-To isolate components, **mock external dependencies**:
-- ✅ **GitHub API** (`requests.get` mock for fetching commits and downloading ZIP files).
-- **Azure DevOps API** ✅ Now tested using `test_azure_devops_integration.py` instead of mocks.
-- **JFrog Artifactory API** (mock `requests.post` for uploads).
-- **SSH Client (`paramiko.SSHClient()`)** (mock SSH connections for deployment testing).
-- **Logging framework** (mock logs to validate error messages).
-
-## **3. Integration Testing**
-Integration tests validate interaction between components.
-
-### **Integration Test Cases:**
-| Test Case | Components Tested |
-|-----------|------------------|
-| ✅ Fetch latest commit | `GitHubRepositoryManager`, `DeploymentOrchestrator` |
-| ✅ Download repository and verify ZIP extraction | `GitHubRepositoryManager` |
-| ✅ Fetch Azure DevOps Repositories | `AzureDevOpsManager` (using live API calls) |
-| ✅ Fetch latest commit from Azure DevOps | AzureDevOpsManager.get_latest_commit() |
-| ✅ Compare local repo with Azure DevOps | `AzureDevOpsManager.compare_with_azure()` |
-| End-to-end deployment | `GitHubRepositoryManager`, `AzureDevOpsManager`, `JFrogUploader`, `RemoteDeployer` |
-| Upload retry validation | `JFrogUploader`, `DeploymentLogger` |
-| Deployment SSH error handling | `RemoteDeployer`, `DeploymentLogger` |
-
-## **4. Expected Debug Output Samples**
-Example of a **successful upload with retry**:
-```powershell
-[DEBUG] Attempt 1 of 3
-[DEBUG] Upload failed, retrying...
-[DEBUG] Attempt 2 of 3
-[DEBUG] Upload successful!
-```
-
-Example of a **successful repository download**:
-```powershell
-[INFO] Downloading repository: vzlatsin/deployment-automation from https://api.github.com/repos/vzlatsin/deployment-automation/zipball/main
-[INFO] Extracting repository ZIP file...
-[INFO] Repository extracted to ./downloaded_repo
-```
-
-Example of an **SSH failure logged**:
-```powershell
-[ERROR] SSH Connection Failed
-[ERROR] Deployment aborted.
-```
-
-## **5. CI/CD Testing Strategy**
-Tests will be **automatically executed** in Azure DevOps pipelines:
-- ✅ **Run unit tests on PR merges.**
-- ✅ **Run integration tests before deployment.**
-- ✅ **Abort deployment if tests fail.**
+This document outlines the step-by-step implementation plan for the **Deployment Automation System**, ensuring alignment with the new Azure DevOps-based execution model. The roadmap ensures that development follows a structured approach, integrating testing and automation at each stage.
 
 ---
-**Next Steps:**
-- Expand unit tests for `AzureDevOpsManager.compare_with_azure()`.
-- Monitor CI/CD test results.
 
-_Last updated: 2025-02-12_
+## **1. Initial Setup: Azure DevOps Pipeline and Repository Cloning**
+### **Goal:** Ensure that the deployment automation app (`deploy.py`) is available inside the pipeline.
+
+✅ **Step 1.1: Configure Azure DevOps Pipeline to Clone Deployment Repo**
+- Modify the `test1` repo pipeline to **clone the deployment automation repository**.
+- Ensure `deploy.py` is accessible from the pipeline execution.
+- Validate that the repo cloning works before proceeding.
+
+**Pipeline Configuration Update:**
+```yaml
+stages:
+  - stage: FetchDeploymentRepo
+    jobs:
+      - job: CheckoutDeploymentAutomation
+        steps:
+          - checkout: self  # Checkout test1 repo (default)
+          
+          - script: |
+              echo "[INFO] Cloning deployment automation repo..."
+              git clone https://dev.azure.com/YOUR_ORG/YOUR_PROJECT/_git/deployment-automation deployment-automation
+            displayName: "Clone Deployment Automation Repo"
+```
+
+✅ **Step 1.2: Modify Pipeline to Call `deploy.py` for Each Step**
+- Update the pipeline to **call `deploy.py` instead of using echo commands.**
+- Validate that `deploy.py` is receiving arguments correctly.
+
+**Pipeline Execution Example:**
+```yaml
+- script: |
+    python deployment-automation/src/deploy.py --steps fetch --app ${{ parameters.app }}
+  displayName: "Fetch Latest Code"
+```
+
+✅ **Step 1.3: Verify Pipeline Execution Logs**
+- Run the pipeline manually and confirm that logs show `deploy.py` execution.
+
+---
+
+## **2. Implement Deployment Steps in `deploy.py`**
+### **Goal:** Ensure `deploy.py` correctly executes deployment steps in response to pipeline triggers.
+
+✅ **Step 2.1: Implement Stub Methods for Deployment Steps**
+- Modify `deploy.py` to **call stub functions** for each step.
+- Add structured logging to capture execution.
+
+✅ **Step 2.2: Implement Fetch Code Logic**
+- Implement logic inside `deploy.py` to fetch code from GitHub or Azure DevOps.
+- Ensure error handling for API failures, missing repositories.
+
+✅ **Step 2.3: Implement Compare Versions Step**
+- Implement version comparison between GitHub and Azure DevOps.
+- Ensure logs capture differences between repositories.
+
+✅ **Step 2.4: Implement Package Application Step**
+- Modify `deploy.py` to package the application for deployment.
+- Add validation for package structure.
+
+✅ **Step 2.5: Implement Upload to JFrog Step**
+- Ensure `deploy.py` interacts with JFrog Artifactory.
+- Implement retry logic in case of upload failures.
+
+✅ **Step 2.6: Implement Deployment Step to `ldctlm01`**
+- Use SSH to deploy the application.
+- Log execution results.
+
+✅ **Step 2.7: Implement Cleanup Step**
+- Ensure temporary files are deleted after execution.
+
+---
+
+## **3. Testing Strategy**
+### **Goal:** Ensure test coverage for all implemented components.
+
+✅ **Step 3.1: Unit Testing**
+- Test `GitHubRepositoryManager` for commit fetching and API handling.
+- Test `AzureDevOpsManager` for commit comparison and syncing.
+- Test `JFrogUploader` for upload handling and retry logic.
+- Test `RemoteDeployer` for SSH execution handling.
+
+✅ **Step 3.2: Integration Testing**
+- Validate that `deploy.py` executes correctly in a real pipeline run.
+- Simulate API failures and verify system responses.
+- Ensure logging captures failures and retries.
+
+✅ **Step 3.3: CI/CD Integration**
+- Run tests automatically in Azure DevOps on pull requests.
+- Ensure deployment is blocked if any critical test fails.
+
+---
+
+## **4. Next Steps**
+- **Ensure full integration with Azure DevOps.**
+- **Monitor pipeline execution logs for potential failures.**
+- **Expand error handling and retry logic for all deployment steps.**
+
+---
+
+_Last updated: 2025-02-15_
+
