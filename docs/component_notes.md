@@ -1,7 +1,7 @@
 # **Component-Level Implementation Notes**
 
 ## **Overview**
-This document provides a breakdown of each major component, its responsibilities, dependencies, and implementation details. **Implementation is now in progress, with `GitHubRepositoryManager` fully implemented. This document will be updated as more components are developed.**
+This document provides a breakdown of each major component, its responsibilities, dependencies, and implementation details. **Implementation is now in progress, with `GitHubRepositoryManager` fully implemented and the system redesigned to follow the Open-Closed Principle (OCP).**
 
 ---
 
@@ -31,36 +31,29 @@ This document provides a breakdown of each major component, its responsibilities
 - Network connectivity issues.
 - Invalid ZIP file handling.
 
-### **Command-Line Execution:**
-#### **Fetching Latest Commit**
-```powershell
-python src/main.py --steps fetch --repo-owner vzlatsin --repo-name deployment-automation
-```
-
-#### **Downloading a Repository from GitHub**
-```powershell
-python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --download-repo --target-dir "./downloaded_repo"
+### **Pipeline Execution:**
+```yaml
+- script: |
+    python deployment-automation/src/deploy.py --steps fetch --app ${{ parameters.app }}
+  displayName: "Fetch Latest Code"
 ```
 
 ---
 
-### AzureDevOpsManager
-- **Status**: In Progress (Implemented `get_latest_commit()`, authentication, and repository retrieval)
-
+## **2. AzureDevOpsManager**
+### **Status: In Progress**
 
 ### **Responsibility:**
 - Pushes updates from GitHub to Azure DevOps.
+- Compares commits between GitHub and Azure DevOps.
 - Triggers CI/CD pipelines if necessary.
 
-### **Key Methods (Planned):**
-
-#### Key Methods (Implemented / Planned)
+### **Key Methods:**
 - `authenticate()`: ✅ Implemented – Authenticates with Azure DevOps API.
 - `fetch_repositories()`: ✅ Implemented – Retrieves all repositories from Azure DevOps.
 - `get_latest_commit()`: ✅ Implemented – Fetches the latest commit from a specified repository.
-- `compare_with_github()`: ⚠️ Planned – Compare commits between Azure DevOps and GitHub.
-- `trigger_pipeline()`: ⚠️ Planned – Start an Azure DevOps pipeline.
-
+- `compare_with_github()`: ⚠️ In Progress – Integrates with pipeline execution.
+- `trigger_pipeline()`: ⚠️ Planned – Will execute as a dedicated pipeline stage.
 
 ### **Dependencies:**
 - `GitHubRepositoryManager`
@@ -69,9 +62,49 @@ python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --dow
 - Authentication failures.
 - Pipeline trigger failures.
 
+### **Pipeline Execution:**
+```yaml
+- script: |
+    python deployment-automation/src/deploy.py --steps compare --app ${{ parameters.app }}
+  displayName: "Compare Versions"
+```
+
 ---
 
-## **3. JFrogUploader**
+## **3. Step Execution and Open-Closed Principle Implementation**
+### **Status: Implemented**
+
+### **Responsibility:**
+- Allows deployment steps to be dynamically loaded and executed.
+- Ensures **new steps can be added without modifying `deploy.py` or `DeploymentOrchestrator`**.
+
+### **Key Design Elements:**
+- **`STEP_REGISTRY` (Dynamic Step Loading)**: Steps are loaded dynamically based on `steps_config.json`, meaning **new steps can be registered without modifying existing code**.
+- **Base Class (`DeploymentStep`)**: All steps inherit from `DeploymentStep` and register themselves, ensuring modularity.
+- **Config-Based Execution (`steps_config.json`)**: Steps are configured externally, making the system extensible.
+
+### **Example of Adding a New Step (`RollbackStep`)**
+1. Create a new step file:
+```python
+from deployment_steps import DeploymentStep
+
+class RollbackStep(DeploymentStep):
+    def execute(self, app=None, target=None):
+        print("[Stub] Rolling back deployment...")
+
+RollbackStep.register("rollback")
+```
+2. Update `steps_config.json`:
+```json
+{
+    "rollback": "RollbackStep"
+}
+```
+✅ The new step is now available **without modifying any existing logic.**
+
+---
+
+## **4. JFrogUploader**
 ### **Status: Planned**
 
 ### **Responsibility:**
@@ -88,52 +121,22 @@ python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --dow
 - Network failures leading to retries.
 - Authentication issues.
 
----
-
-## **4. RemoteDeployer**
-### **Status: Planned**
-
-### **Responsibility:**
-- Deploys the package to `ldctlm01` using SSH.
-- Logs SSH failures and prevents deployment if necessary.
-
-### **Key Methods (Planned):**
-- `deploy_package(target_host, package_path)` - Executes deployment over SSH.
-- `_execute_ssh_command(command)` - Runs a remote command over SSH.
-
-### **Dependencies:**
-- `JFrogUploader` (ensures package is uploaded before deployment).
-
-### **Edge Cases:**
-- SSH authentication failure.
-- Deployment script execution failure.
+### **Pipeline Execution:**
+```yaml
+- script: |
+    python deployment-automation/src/deploy.py --steps upload --app ${{ parameters.app }}
+  displayName: "Upload to JFrog"
+```
 
 ---
 
-## **5. DeploymentLogger**
-### **Status: Planned**
-
-### **Responsibility:**
-- Logs all operations, including failures and retries.
-
-### **Key Methods (Planned):**
-- `log_event(message, level="INFO")` - Logs a general event.
-- `log_error(message)` - Logs an error message.
-
-### **Dependencies:**
-- **None**
-
-### **Edge Cases:**
-- Logging failures due to file permissions or missing log files.
+## **5. Next Steps**
+✅ **Step 1: Implement Repository Cloning in Azure DevOps**  
+✅ **Step 2: Modify `deploy.py` to correctly execute steps from the pipeline**  
+✅ **Step 3: Implement `compare_with_github()` inside `AzureDevOpsManager`**  
+✅ **Step 4: Expand unit and integration tests to validate pipeline execution**  
 
 ---
 
-### Next Steps
-- Implement `compare_with_github()`.
-- Extend test coverage for `AzureDevOpsManager`.
-- Add error handling and retry logic for API calls.
+_Last updated: 2025-02-15_
 
-
----
-
-_Last updated: 2025-02-11_

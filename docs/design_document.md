@@ -9,71 +9,57 @@ This document outlines the design for the **Deployment Automation System**, whic
 - Each deployment step should be **independently executable** while allowing for a **full deployment workflow**.
 - The system must provide **logging and error handling** to ensure traceability and debugging capabilities.
 - The system should be **extensible**, allowing future integration with additional CI/CD tools.
-- If any critical step fails, the system should **log the failure and halt execution**, preventing an incomplete deployment.
+- The **Azure DevOps pipeline will first clone the deployment automation repository** before executing deployment steps.
+- All deployment steps will be executed using `deploy.py`, which is responsible for managing the workflow.
 
 ## 3. Deployment Workflow
 The deployment system is responsible for:
-- **Fetching the latest source code from GitHub **or the latest commit from Azure DevOps**.
-- **Downloading the GitHub repository** as a ZIP file.
-- **Comparing changes** between GitHub and Azure DevOps repositories.
-- **Pushing updates** to Azure DevOps repository.
-- **Packaging the application** for deployment.
-- **Uploading the package** to JFrog Artifactory **with built-in retry logic**.
-- **Deploying the application** to the target production environment (`ldctlm01`).
-- **Logging failures, retries, and successful deployments**.
+1. **Cloning the deployment automation repository** from Azure DevOps.
+2. **Fetching the latest source code from GitHub or Azure DevOps.**
+3. **Comparing changes** between GitHub and Azure DevOps repositories.
+4. **Pushing updates** to Azure DevOps repository.
+5. **Packaging the application** for deployment.
+6. **Uploading the package** to JFrog Artifactory **with built-in retry logic**.
+7. **Deploying the application** to the target production environment (`ldctlm01`).
+8. **Logging failures, retries, and successful deployments**.
 
-Each step can be executed independently or as part of a full deployment pipeline.
+Each step is executed within Azure DevOps, triggering `deploy.py` for each stage.
 
-### **3.1 Command-Line Execution Examples**
-#### **Running `main.py` with No Arguments (Displays Available Steps)**
-```powershell
-PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py
-No steps specified. Available steps: fetch, download-repo, compare, push, package, upload, deploy
+### **3.1 Repository Cloning in Azure DevOps**
+Before executing deployment steps, the **Azure DevOps pipeline will clone the deployment automation repository**, ensuring that `deploy.py` is available.
+
+#### **Pipeline Steps**
+1. **Checkout test1 repository (default behavior).**  
+2. **Clone deployment automation repository.**  
+3. **Run `deploy.py` with specific steps.**  
+
+#### **Pipeline Configuration**
+To clone the deployment automation repository, the pipeline will use:
+```yaml
+stages:
+  - stage: FetchDeploymentRepo
+    jobs:
+      - job: CheckoutDeploymentAutomation
+        steps:
+          - checkout: self  # Checkout test1 repo (default)
+          
+          - script: |
+              echo "[INFO] Cloning deployment automation repo..."
+              git clone https://dev.azure.com/YOUR_ORG/YOUR_PROJECT/_git/deployment-automation deployment-automation
+            displayName: "Clone Deployment Automation Repo"
 ```
 
-#### **Downloading a Repository from GitHub**
-```powershell
-PS C:\Users\Vadim\projects\deployment-automation> python src/main.py --repo-owner vzlatsin --repo-name deployment-automation --download-repo --target-dir "./downloaded_repo"
-Downloading repository: vzlatsin/deployment-automation from https://api.github.com/repos/vzlatsin/deployment-automation/zipball/main
-Extracting repository ZIP file...
-Repository extracted to ./downloaded_repo
-Repository deployment-automation downloaded successfully to ./downloaded_repo
-```
+### **3.2 Command-Line Execution in Azure DevOps**
+Each stage in the pipeline will invoke `deploy.py` with the relevant step:
+```yaml
+- script: |
+    python deployment-automation/src/deploy.py --steps fetch --app ${{ parameters.app }}
+  displayName: "Fetch Latest Code"
 
-#### **Executing Specific Deployment Steps**
-```powershell
-PS C:\Users\Vadim\projects\deployment-automation> python .\src\main.py --steps fetch compare push
-Executing step: fetch
-Executing step: compare
-Executing step: push
+- script: |
+    python deployment-automation/src/deploy.py --steps compare --app ${{ parameters.app }}
+  displayName: "Compare Versions"
 ```
-
-#### **Running Unit Tests**
-To validate functionality, run:
-```powershell
-python -m unittest discover -s tests
-```
-Example output:
-```powershell
-PS C:\Users\Vadim\projects\deployment-automation> python -m unittest tests.test_jfrog_basics
-[DEBUG] Attempt 1 of 3
-[DEBUG] Simulating retry attempt 1
-[DEBUG] Upload failed, retrying...
-[DEBUG] Attempt 2 of 3
-[DEBUG] Simulating retry attempt 2
-[DEBUG] Upload failed, retrying...
-[DEBUG] Attempt 3 of 3
-[DEBUG] Upload Succeeded on Attempt 3
-[DEBUG] Upload successful!
-[DEBUG] Total Upload Attempts: 2
-```
-
-#### Fetching Latest Commit from Azure DevOps
-```powershell
-PS C:\Users\Vadim\projects\deployment-automation> python src/main.py --fetch-latest-commit
-Fetching latest commit for repo: deployment-automation
-Latest commit SHA: e7d0c85bffedfba35c4456609b16dc156e99c2d7
-
 
 ## 4. System Architecture (Object Design)
 The system follows **object-oriented design best practices**, ensuring modularity, extensibility, and testability.
@@ -88,21 +74,22 @@ The system follows **object-oriented design best practices**, ensuring modularit
 ### **4.2 Class Overview**
 | **Class Name**              | **Responsibility** |
 |----------------------------|-------------------|
-| `DeploymentOrchestrator`   | Manages overall deployment workflow, calling individual steps. |
-| `GitHubRepositoryManager`  | Fetches the latest code from GitHub, downloads the repository as a ZIP file, compares with Azure DevOps. |
-| `AzureDevOpsManager`       | Fetches the latest commit from Azure DevOps, compares with GitHub, pushes updates to Azure DevOps, and triggers pipelines (if applicable). |
-| `AppPackager`              | Packages the application for deployment (ZIP/TAR). |
-| `JFrogUploader`            | Uploads the package to JFrog Artifactory **with retry logic**. |
-| `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH **and logs failures**. |
+| `DeploymentOrchestrator`   | Calls `deploy.py` for executing deployment steps. |
+| `GitHubRepositoryManager`  | Fetches the latest code from GitHub and compares with Azure DevOps. |
+| `AzureDevOpsManager`       | Fetches the latest commit from Azure DevOps and syncs repositories. |
+| `AppPackager`              | Packages the application for deployment. |
+| `JFrogUploader`            | Uploads the package to JFrog Artifactory with retry logic. |
+| `RemoteDeployer`           | Deploys the application to `ldctlm01` via SSH. |
 | `DeploymentLogger`         | Handles structured logging for all components. |
 
 ### **4.3 Class Interactions**
-1. `DeploymentOrchestrator` **calls** `GitHubRepositoryManager` to fetch code.
-2. `GitHubRepositoryManager` **downloads and compares repositories** before pushing to Azure DevOps.
-3. `AzureDevOpsManager` **syncs repositories** and triggers pipelines if necessary.
-4. `AppPackager` **prepares the deployment package**.
-5. `JFrogUploader` **uploads the packaged artifact with automatic retry**.
-6. `RemoteDeployer` **deploys the package** to the production environment **and logs SSH failures**.
+1. **Azure DevOps triggers `deploy.py`** for each stage.
+2. `DeploymentOrchestrator` **calls** the appropriate deployment step.
+3. `GitHubRepositoryManager` **fetches and compares repositories**.
+4. `AzureDevOpsManager` **syncs repositories**.
+5. `AppPackager` **prepares the deployment package**.
+6. `JFrogUploader` **uploads the artifact with retry logic**.
+7. `RemoteDeployer` **deploys the package to production**.
 
 ## **Appendix A: System Dependencies**
 - **GitHub API**: Used to fetch the latest commit hash and download repositories.
@@ -124,8 +111,6 @@ To prevent architectural inconsistencies, a **Metadata Validation Test** will be
 - Validate constructor parameters and dependencies.
 - Verify correct dependency injection.
 
-This will serve as a **single-point validation test**, reducing the need to update multiple test files when adding or modifying components.
-
 ### **B.3 Evolution of System Architecture Through TDD**
 Each test failure will guide refinements in system design:
 | **Test Case** | **Impact on System Design** |
@@ -136,3 +121,4 @@ Each test failure will guide refinements in system design:
 | Constructor signature mismatch | Ensures **all required dependencies are present** and correctly injected. |
 
 By following this methodology, we ensure that **our system evolves in a testable, maintainable, and modular way while catching errors early in the design phase**.
+
