@@ -1,16 +1,50 @@
+from deployment_logger import DeploymentLogger
 
 class RemoteDeployer:
-    def __init__(self, server_address, ssh_user, logger):
-        """Initialize RemoteDeployer with a provided logger."""
+    """Handles deployment of packages to remote servers via SSH."""
+
+    def __init__(self, server_address, ssh_user, ssh_key_path, logger):
+        """Initialize RemoteDeployer with SSH credentials and logging."""
+        if not server_address:
+            raise ValueError("❌ Server address is required.")
+        if not ssh_user:
+            raise ValueError("❌ SSH user is required.")
+        if not ssh_key_path:
+            raise ValueError("❌ SSH key path is required.")
+        if logger is None:
+            raise ValueError("❌ Logger instance must be provided.")
+
         self.server_address = server_address
         self.ssh_user = ssh_user
-        self.logger = logger  # ✅ Always require a logger
+        self.ssh_key_path = ssh_key_path
+        self.logger = logger
 
-    def deploy_to_server(self, package_path):
-        """Simulates remote deployment with SSH."""
-        try:
-            self.logger.log_info(f"🚀 Deploying {package_path} to {self.server_address} using SSH")
-            raise Exception("SSH Connection Failed")  # Simulating failure
-        except Exception as e:
-            self.logger.log_error(f"❌ Deployment failed: {e}")  # ✅ Log the error before raising
-            raise  # ✅ Re-raise exception
+        self.logger.log_info(f"✅ RemoteDeployer initialized for {server_address} as {ssh_user}.")
+
+    def deploy_to_server(self, local_package_path, remote_package_path):
+        """Stub: Simulates SSH deployment with validation and logging."""
+
+        # 🔹 Validate required parameters
+        if not local_package_path:
+            self.logger.log_error("❌ Local package path is missing.")
+            return
+        if not remote_package_path:
+            self.logger.log_error("❌ Remote deployment path is missing.")
+            return
+
+        self.logger.log_info(f"🚀 [STUB] Starting deployment of {local_package_path} to {self.server_address}:{remote_package_path}")
+
+        # 🔹 Simulated Steps:
+        self.logger.log_info(f"🔹 [STUB] Establishing SSH connection to {self.server_address} as {self.ssh_user}...")
+        # TODO: In real implementation, use `paramiko.SSHClient` to establish a connection.
+
+        self.logger.log_info(f"🔹 [STUB] Verifying package integrity before transfer...")
+        # TODO: Implement file checksum verification before sending.
+
+        self.logger.log_info(f"🔹 [STUB] Uploading {local_package_path} to {remote_package_path}...")
+        # TODO: Use SFTP to transfer the file.
+
+        self.logger.log_info(f"🔹 [STUB] Verifying file transfer success on remote server...")
+        # TODO: Perform a remote checksum validation.
+
+        self.logger.log_info(f"✅ [STUB] Deployment step completed successfully.")
