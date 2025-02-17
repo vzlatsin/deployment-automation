@@ -7,14 +7,14 @@ class DeploymentOrchestrator:
 
     def execute_steps(self, steps, app=None, target=None):
         """Executes deployment steps dynamically from config."""
-        self.logger.log_info(f"Executing deployment steps: {steps}")
+        self.logger.log_info(f"🚀 Executing deployment steps: {steps}")
 
         for step in steps:
             if step in STEP_REGISTRY:
-                step_instance = STEP_REGISTRY[step]()  # Find and execute the step
+                step_instance = STEP_REGISTRY[step](self.logger)  # ✅ Pass logger to each step
+                self.logger.log_info(f"🟢 Running step: {step} -> {step_instance.__class__.__name__}")
                 step_instance.execute(app, target)
             else:
-                self.logger.log_error(f"Unknown step: {step}")  # ✅ Use log_error() instead of log_warning()
+                self.logger.log_error(f"❌ Unknown step: {step}")
 
-        self.logger.log_info(f"Steps executed: {steps}")
-        return steps
+        self.logger.log_info(f"✅ Steps executed: {steps}")
