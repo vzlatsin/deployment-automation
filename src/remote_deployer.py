@@ -9,8 +9,8 @@ class RemoteDeployer:
     def deploy_to_server(self, package_path):
         """Simulates remote deployment with SSH."""
         try:
-            self.logger.info(f"🚀 Deploying {package_path} to {self.server_address} using SSH")
+            self.logger.log_info(f"🚀 Deploying {package_path} to {self.server_address} using SSH")
             raise Exception("SSH Connection Failed")  # Simulating failure
         except Exception as e:
-            self.logger.error(f"❌ Deployment failed: {e}")  # ✅ Log the error before raising
+            self.logger.log_error(f"❌ Deployment failed: {e}")  # ✅ Log the error before raising
             raise  # ✅ Re-raise exception
