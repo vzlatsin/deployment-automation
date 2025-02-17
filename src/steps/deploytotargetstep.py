@@ -8,7 +8,7 @@ class DeployToTargetStep(DeploymentStep):
 
     def execute(self, app=None, target=None):
         """Simulates deployment execution (currently stub with diagnostics)."""
-        self.logger.info(f"🟢 [Stub] Deploying {app} to {target}...")
+        self.logger.log_info(f"🟢 [Stub] Deploying {app} to {target}...")
 
         # Create RemoteDeployer instance with the same logger
         deployer = RemoteDeployer(target, "deploy_user", self.logger)
@@ -16,6 +16,6 @@ class DeployToTargetStep(DeploymentStep):
         # Simulate deployment
         try:
             deployer.deploy_to_server("job_tracking_system.tar.gz")
-            self.logger.info(f"✅ [Stub] Deployment step complete for {app} -> {target}")
+            self.logger.log_info(f"✅ [Stub] Deployment step complete for {app} -> {target}")
         except Exception as e:
-            self.logger.error(f"❌ Deployment error: {e}")
+            self.logger.log_error(f"❌ Deployment error: {e}")
