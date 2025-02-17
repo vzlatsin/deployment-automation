@@ -1,7 +1,10 @@
 from deployment_steps import DeploymentStep
 
 class FetchCodeStep(DeploymentStep):
-    def execute(self, app=None, target=None):
-        print(f"[Stub] Fetching latest code...")
+    def __init__(self, logger):
+        super().__init__(logger)  # ✅ Ensure logger is passed correctly
 
-FetchCodeStep.register("fetch")
+    def execute(self, app=None, target=None):
+        self.logger.log_info("[Stub] Fetching latest code...")  # ✅ Uses shared logger
+
+

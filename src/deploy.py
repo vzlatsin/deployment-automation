@@ -20,7 +20,6 @@ def main():
     orchestrator = DeploymentOrchestrator(logger)
 
     executed_steps = orchestrator.execute_steps(args.steps, args.app, args.target)
-    logger.log_info(f"Steps executed: {executed_steps}")
 
 if __name__ == "__main__":
     main()

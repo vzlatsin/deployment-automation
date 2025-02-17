@@ -2,9 +2,9 @@ from deployment_steps import DeploymentStep
 from remote_deployer import RemoteDeployer
 
 class DeployToTargetStep(DeploymentStep):
+
     def __init__(self, logger):
-        """Initialize with a logger to maintain consistency."""
-        self.logger = logger
+        super().__init__(logger)  # ✅ Ensure logger is passed correctly
 
     def execute(self, app=None, target=None):
         """Simulates deployment execution (currently stub with diagnostics)."""
