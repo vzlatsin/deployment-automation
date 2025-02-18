@@ -38,7 +38,7 @@ class DeploymentOrchestrator:
         with open(parameters_path, "r") as f:
             return json.load(f)
 
-    def execute_steps(self, steps, app=None, target=None):
+    def execute_steps(self, steps, app=None):
         executed_steps = []
         self.logger.log_info(f"🚀 Executing deployment steps: {steps}")
 
@@ -57,7 +57,7 @@ class DeploymentOrchestrator:
 
                 # Execute step with dynamically loaded parameters
                 self.logger.log_info(f"🟢 Running step: {step} -> {step_instance.__class__.__name__}")
-                step_instance.execute(app, target, **formatted_params)
+                step_instance.execute(app, **formatted_params)
 
                 executed_steps.append(step)
 
