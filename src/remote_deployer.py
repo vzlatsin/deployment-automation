@@ -1,3 +1,4 @@
+import paramiko
 from deployment_logger import DeploymentLogger
 
 class RemoteDeployer:
@@ -21,6 +22,37 @@ class RemoteDeployer:
 
         self.logger.log_info(f"✅ RemoteDeployer initialized for {server_address} as {ssh_user}.")
 
+    def check_remote_directory(self, remote_path):
+        """Checks if the remote directory exists and logs its contents."""
+
+        self.logger.log_info(f"🔍 Checking remote directory: {remote_path} on {self.server_address}...")
+
+        try:
+            ssh = paramiko.SSHClient()
+            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            ssh.connect(self.server_address, username=self.ssh_user, key_filename=self.ssh_key_path)
+
+            stdin, stdout, stderr = ssh.exec_command(f"if [ -d {remote_path} ]; then ls -l {remote_path}; else echo 'DIRECTORY_NOT_FOUND'; fi")
+            output = stdout.read().decode().strip()
+            error = stderr.read().decode().strip()
+
+            if error:
+                self.logger.log_error(f"❌ Error accessing remote directory: {error}")
+            elif "DIRECTORY_NOT_FOUND" in output:
+                self.logger.log_error(f"❌ Remote directory does not exist: {remote_path}")
+            else:
+                self.logger.log_info(f"📂 Remote Directory Structure:\n{output}")
+
+            ssh.close()
+
+        except paramiko.AuthenticationException:
+            self.logger.log_error("❌ SSH Authentication Failed. Check credentials.")
+        except paramiko.SSHException as ssh_exception:
+            self.logger.log_error(f"❌ SSH Connection Error: {ssh_exception}")
+        except Exception as e:
+            self.logger.log_error(f"❌ Unexpected Error: {e}")
+
+
     def deploy_to_server(self, local_package_path, remote_package_path):
         """Stub: Simulates SSH deployment with validation and logging."""
 
@@ -33,6 +65,9 @@ class RemoteDeployer:
             return
 
         self.logger.log_info(f"🚀 [STUB] Starting deployment of {local_package_path} to {self.server_address}:{remote_package_path}")
+
+        # ✅ New Step: Check remote directory before deployment
+        self.check_remote_directory(remote_package_path)
 
         # 🔹 Simulated Steps:
         self.logger.log_info(f"🔹 [STUB] Establishing SSH connection to {self.server_address} as {self.ssh_user}...")

@@ -1,8 +1,8 @@
 {
     "deploy": {
-        "ssh_user": "deploy_user",
+        "ssh_user": "ctmazure",
         "ssh_key_path": "~/.ssh/id_rsa",
         "local_package_path": "build/{app}.tar.gz",
-        "remote_package_path": "/opt/deployments/{app}.tar.gz"
+        "remote_package_path": "/app/ctm/ctmazure/deployments/{app}.tar.gz"
     }
 }
